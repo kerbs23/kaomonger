@@ -1,0 +1,11 @@
+{
+    "emoji_id_#": {
+        "content": "The contents of the emoji",
+        "species": ["species of the kaomoji", "more species"],
+        "emotion": ["the emotions in the kaomoji", "more emotions"],
+        "misc"     : ["misc tags", "more misc tags"],
+        "dotArt": false,
+        "hasEmoji": false,
+        "multiLine": false
+    }
+}
