@@ -338,7 +338,10 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = cleaned_dir / f"cleaned_kaomoji_{timestamp}.json"
     
-    cleaned_data = {}
+    # Initialize output file with empty dict
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump({}, f, indent=2, ensure_ascii=False)
+    
     processed_count = 0
     skipped_count = 0
     
@@ -354,11 +357,14 @@ def main():
         for kaomoji_id, kaomoji_data in messy_data.items():
             processed = process_kaomoji(kaomoji_id, kaomoji_data)
             if processed is not None:
-                # Kaomoji was saved
+                # Load current output, add kaomoji, and save immediately
+                with open(output_path, 'r', encoding='utf-8') as f:
+                    cleaned_data = json.load(f)
                 cleaned_data[kaomoji_id] = processed
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
                 processed_count += 1
             else:
-                # Kaomoji was skipped/deleted
                 skipped_count += 1
             
             # Mark for removal from dirty file (whether saved or skipped)
@@ -378,10 +384,6 @@ def main():
             print(f"  Deleted empty file: {json_file.name}")
         
         print(f"  Processed {len(kaomojis_to_remove)} kaomojis from {json_file.name}")
-    
-    # Save combined cleaned data
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
     
     print(f"\nSummary:")
     print(f"  Saved: {processed_count} kaomojis")
