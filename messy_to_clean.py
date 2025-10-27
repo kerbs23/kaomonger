@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import tempfile
 import subprocess
+import datetime
 
 # Dot art characters from design doc
 DOT_ART_CHARS = set("⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿⡀⡁⡂⡃⡄⡅⡆⡇⡈⡉⡊⡋⡌⡍⡎⡏⡐⡑⡒⡓⡔⡕⡖⡗⡘⡙⡚⡛⡜⡝⡞⡟⡠⡡⡢⡣⡤⡥⡦⡧⡨⡩⡪⡫⡬⡭⡮⡯⡰⡱⡲⡳⡴⡵⡶⡷⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂⢃⢄⢅⢆⢇⢈⢉⢊⢋⢌⢍⢎⢏⢐⢑⢒⢓⢔⢕⢖⢗⢘⢙⢚⢛⢜⢝⢞⢟⢠⢡⢢⢣⢤⢥⢦⢧⢨⢩⢪⢫⢬⢭⢮⢯⢰⢱⢲⢳⢴⢵⢶⢷⢸⢹⢺⢻⢼⢽⢾⢿⣀⣁⣂⣃⣄⣅⣆⣇⣈⣉⣊⣋⣌⣍⣎⣏⣐⣑⣒⣓⣔⣕⣖⣗⣘⣙⣚⣛⣜⣝⣞⣟⣠⣡⣢⣣⣤⣥⣦⣧⣨⣩⣪⣫⣬⣭⣮⣯⣰⣱⣲⣳⣴⣵⣶⣷⣸⣹⣺⣻⣼⣽⣾⣿")
@@ -174,17 +175,36 @@ def manual_verify_kaomoji(kaomoji_id, kaomoji_data):
         }
         f.write(json.dumps(metadata, indent=2, ensure_ascii=False))
         
+        # Append current species and emotion lists for reference
+        f.write("\n\n# Available species (for reference):\n")
+        species_list = load_keywords('species.txt')
+        f.write('# ' + ', '.join(sorted(species_list)) + '\n')
+        
+        f.write("\n# Available emotions (for reference):\n")
+        emotion_list = load_keywords('emotions.txt')
+        f.write('# ' + ', '.join(sorted(emotion_list)) + '\n')
+        
         temp_path = f.name
     
     try:
         print(f"\nEditing kaomoji {kaomoji_id}")
-        print("Content preview:", kaomoji_data['content'][:50] + ("..." if len(kaomoji_data['content']) > 50 else ""))
+        print("Content preview:")
+        print("─" * 40)
+        preview = kaomoji_data['content']
+        if len(preview) > 1000:
+            preview = preview[:1000] + "..."
+        print(preview)
+        print("─" * 40)
         print("Instructions:")
         print("  - Edit fields as needed")
         print("  - Set 'delete': true to skip this kaomoji")
+        print("  - Press 's' to skip without editing")
         print("  - Save and exit to continue")
-        print("Press Enter to open in editor...")
-        input()
+        
+        response = input("Press Enter to open in editor, or 's' to skip: ")
+        if response.lower() == 's':
+            print("Kaomoji skipped.")
+            return None
         
         # Open in editor
         subprocess.run([editor, temp_path])
@@ -211,17 +231,29 @@ def manual_verify_kaomoji(kaomoji_id, kaomoji_data):
         # Use regex to extract sections
         import re
         
-        # Extract CONTENT section (everything between CONTENT: and next section)
-        content_match = re.search(r'CONTENT:(.*?)(?=SPECIES:|EMOTION:|MISC:|METADATA:|$)', file_content, re.DOTALL)
-        if content_match:
-            sections['CONTENT'] = content_match.group(1).strip()
+        # Find section boundaries
+        content_start = file_content.find('CONTENT:')
+        species_start = file_content.find('SPECIES:')
+        emotion_start = file_content.find('EMOTION:')
+        misc_start = file_content.find('MISC:')
+        metadata_start = file_content.find('METADATA:')
         
-        # Extract JSON sections (everything after the header until next section or end)
-        for section in ['SPECIES', 'EMOTION', 'MISC', 'METADATA']:
-            pattern = rf'{section}:(.*?)(?=SPECIES:|EMOTION:|MISC:|METADATA:|$)'
-            match = re.search(pattern, file_content, re.DOTALL)
-            if match:
-                sections[section] = match.group(1).strip()
+        # Extract CONTENT (everything between CONTENT: and SPECIES:)
+        if content_start != -1 and species_start != -1:
+            sections['CONTENT'] = file_content[content_start + len('CONTENT:'):species_start].strip()
+        
+        # Extract JSON sections (everything between header and next section)
+        section_boundaries = [
+            ('SPECIES', species_start, emotion_start if emotion_start != -1 else misc_start if misc_start != -1 else metadata_start if metadata_start != -1 else len(file_content)),
+            ('EMOTION', emotion_start, misc_start if misc_start != -1 else metadata_start if metadata_start != -1 else len(file_content)),
+            ('MISC', misc_start, metadata_start if metadata_start != -1 else len(file_content)),
+            ('METADATA', metadata_start, file_content.find('# Available species') if file_content.find('# Available species') != -1 else len(file_content))
+        ]
+        
+        for section_name, start, end in section_boundaries:
+            if start != -1 and end != -1 and start < end:
+                content = file_content[start + len(section_name + ':'):end].strip()
+                sections[section_name] = content
         
         # Reconstruct the data
         edited_data = kaomoji_data.copy()
@@ -238,6 +270,9 @@ def manual_verify_kaomoji(kaomoji_id, kaomoji_data):
             edited_data['emotion'] = json.loads(sections.get('EMOTION', '[]'))
             edited_data['misc'] = json.loads(sections.get('MISC', '[]'))
             edited_data.update(json.loads(sections.get('METADATA', '{}')))
+            
+            # Update species and emotion files with any new entries
+            update_keyword_files(edited_data['species'], edited_data['emotion'])
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON: {e}")
             print("Please fix the format and try again...")
@@ -260,39 +295,98 @@ def manual_verify_kaomoji(kaomoji_id, kaomoji_data):
         # Clean up temp file
         os.unlink(temp_path)
 
+def update_keyword_files(species_tags, emotion_tags):
+    """Update species.txt and emotions.txt with any new tags"""
+    # Load current lists
+    current_species = load_keywords('species.txt')
+    current_emotions = load_keywords('emotions.txt')
+    
+    # Find new entries
+    new_species = [tag for tag in species_tags if tag.lower() not in current_species]
+    new_emotions = [tag for tag in emotion_tags if tag.lower() not in current_emotions]
+    
+    # Append new entries to files
+    if new_species:
+        with open('species.txt', 'a', encoding='utf-8') as f:
+            for tag in new_species:
+                f.write(f"\n{tag}")
+        print(f"Added new species to species.txt: {', '.join(new_species)}")
+    
+    if new_emotions:
+        with open('emotions.txt', 'a', encoding='utf-8') as f:
+            for tag in new_emotions:
+                f.write(f"\n{tag}")
+        print(f"Added new emotions to emotions.txt: {', '.join(new_emotions)}")
+
 def main():
     # Process all JSON files in dirty_json directory
     dirty_dir = Path('dirty_json')
+    cleaned_dir = Path('cleaned')
+    cleaned_dir.mkdir(exist_ok=True)
+    
     if not dirty_dir.exists():
         print("Error: dirty_json directory not found")
         return
     
-    cleaned_data = {}
     json_files = list(dirty_dir.glob('*.json'))
     
     if not json_files:
         print("No JSON files found in dirty_json directory")
         return
     
+    # Create timestamped output file
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = cleaned_dir / f"cleaned_kaomoji_{timestamp}.json"
+    
+    cleaned_data = {}
+    processed_count = 0
+    skipped_count = 0
+    
     for json_file in json_files:
         print(f"Processing {json_file.name}...")
         with open(json_file, 'r', encoding='utf-8') as f:
             messy_data = json.load(f)
         
+        # Track which kaomojis to remove from this file
+        kaomojis_to_remove = []
+        
         # Process each kaomoji
         for kaomoji_id, kaomoji_data in messy_data.items():
             processed = process_kaomoji(kaomoji_id, kaomoji_data)
-            if processed is not None:  # Only add if not deleted
+            if processed is not None:
+                # Kaomoji was saved
                 cleaned_data[kaomoji_id] = processed
+                processed_count += 1
+            else:
+                # Kaomoji was skipped/deleted
+                skipped_count += 1
+            
+            # Mark for removal from dirty file (whether saved or skipped)
+            kaomojis_to_remove.append(kaomoji_id)
         
-        print(f"  Processed {len(messy_data)} kaomojis from {json_file.name}")
+        # Remove processed kaomojis from dirty file
+        for kaomoji_id in kaomojis_to_remove:
+            messy_data.pop(kaomoji_id, None)
+        
+        # Save updated dirty file (with processed kaomojis removed)
+        if messy_data:  # Only save if there are remaining kaomojis
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(messy_data, f, indent=2, ensure_ascii=False)
+        else:
+            # Delete empty file
+            json_file.unlink()
+            print(f"  Deleted empty file: {json_file.name}")
+        
+        print(f"  Processed {len(kaomojis_to_remove)} kaomojis from {json_file.name}")
     
     # Save combined cleaned data
-    output_path = Path('cleaned_kaomoji.json')
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
     
-    print(f"\nTotal: Processed {len(cleaned_data)} kaomojis from {len(json_files)} files")
+    print(f"\nSummary:")
+    print(f"  Saved: {processed_count} kaomojis")
+    print(f"  Skipped: {skipped_count} kaomojis")
+    print(f"  Output: {output_path}")
 
 if __name__ == "__main__":
     main()
