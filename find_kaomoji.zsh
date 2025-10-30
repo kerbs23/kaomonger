@@ -135,3 +135,5 @@ elif [[ -z ${ZSH_VERSION:-} ]]; then
     echo "This script must be sourced in zsh or run with --direct" >&2
     exit 1
 fi
+
+[[ $ZSH_EVAL_CONTEXT == toplevel ]] && search_kaomoji "$@"
