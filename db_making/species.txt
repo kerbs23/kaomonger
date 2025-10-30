@@ -1,0 +1,10 @@
+
+wolf
+fox
+deer
+
+skull
+bunny
+cat
+robot
+tiger

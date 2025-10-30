@@ -191,8 +191,8 @@ def manual_verify_kaomoji(kaomoji_id, kaomoji_data):
         print("Content preview:")
         print("─" * 40)
         preview = kaomoji_data['content']
-        if len(preview) > 1000:
-            preview = preview[:1000] + "..."
+        if len(preview) > 10000:
+            preview = preview[:10000] + "..."
         print(preview)
         print("─" * 40)
         print("Instructions:")
@@ -321,7 +321,7 @@ def update_keyword_files(species_tags, emotion_tags):
 def main():
     # Process all JSON files in dirty_json directory
     dirty_dir = Path('dirty_json')
-    cleaned_dir = Path('cleaned')
+    cleaned_dir = Path('../cleaned')
     cleaned_dir.mkdir(exist_ok=True)
     
     if not dirty_dir.exists():
