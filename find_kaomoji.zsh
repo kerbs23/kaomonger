@@ -1,5 +1,11 @@
+#!/usr/bin/env zsh
+
 search_kaomoji() {
-    local source_dir="/home/magnoliad/Personal/25FW/kaomoji_sorter/cleaned"
+    # Get script directory (handles symlinks)
+    
+    local script_dir="$(cd "$(dirname "${(%):-%x}")" && pwd -P)"
+    
+    local source_dir="$script_dir/cleaned"
     local query
     local codeblock=false
     local dotArtFilter
@@ -17,7 +23,7 @@ Search and select kaomoji from the JSON files based on the tags.
 
 OPTIONS:
   -h, --help           Show this help message
-  -s, --source DIR     Source directory for JSON files (default: /home/magnoliad/Personal/25FW/kaomoji_sorter/cleaned)
+  -s, --source DIR     Source directory for JSON files (default: ./cleaned)
   -cb, --codeblock     Copy result in markdown codeblock format
   
   FILTERS (default: show all):
@@ -122,3 +128,10 @@ EOF
 
 }
 
+# If script is executed directly, run the function
+if [[ ${1:-} == "--direct" ]]; then
+    ZSH_SCRIPT="$0" search_kaomoji "$@"
+elif [[ -z ${ZSH_VERSION:-} ]]; then
+    echo "This script must be sourced in zsh or run with --direct" >&2
+    exit 1
+fi
