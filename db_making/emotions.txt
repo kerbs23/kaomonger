@@ -8,3 +8,12 @@ cute
 blush
 skull
 interview
+heart
+awoo
+pensive
+surprise
+thumbsup
+cheer
+horny
+cool
+cry

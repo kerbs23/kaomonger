@@ -8,3 +8,7 @@ bunny
 cat
 robot
 tiger
+dog
+furry
+dragon
+gun
