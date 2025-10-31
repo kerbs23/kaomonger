@@ -12,3 +12,8 @@ dog
 furry
 dragon
 gun
+pair
+bear
+ghost
+:3
+sanrio
