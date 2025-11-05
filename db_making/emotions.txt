@@ -22,4 +22,6 @@ kiss
 smooth
 mad
 strong
-angry
+
+curious
+tired

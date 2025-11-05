@@ -19,3 +19,7 @@ ghost
 sanrio
 drink
 boykisser
+table
+sheep
+skeleton
+pig
