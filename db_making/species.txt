@@ -17,3 +17,5 @@ bear
 ghost
 :3
 sanrio
+drink
+boykisser
