@@ -25,3 +25,6 @@ skeleton
 pig
 tbh
 bird
+alien
+car
+flower
