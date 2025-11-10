@@ -39,3 +39,4 @@ hungry
 hot
 hispanic
 nsfw
+sad
