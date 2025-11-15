@@ -40,3 +40,5 @@ hot
 hispanic
 nsfw
 sad
+music
+money

@@ -29,4 +29,6 @@ alien
 car
 flower
 shark
-twik
+twink
+
+slugcat
